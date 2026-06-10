@@ -1,0 +1,47 @@
+# MagicSquare_xx — Cursor Rules (세션 3)
+
+## 도메인 (Rule)
+
+- 격자: **4×4** 고정. 빈칸 = `0`, 최대 2개. 채운 칸 = **1~16** 각 1회.
+- **마법상수** = 34. 검증 대상 **10선**:
+  - 행 R1, R2, R3, R4
+  - 열 C1, C2, C3, C4
+  - 대각 D1 (주대각 ↘), D2 (부대각 ↙)
+- `0`이 포함된 선은 합 검증 **skip** → `incomplete`.
+- 자동 풀이·Solver·힌트·n×n 일반화는 **Out of Scope**. 검증만 다룬다.
+
+## API (Skill)
+
+```python
+validate_lines(grid) -> {"status": "pass"|"fail"|"incomplete", "failed_lines": [...]}
+```
+
+- `pass`: 10선 모두 합 34 (빈칸 없는 완성판).
+- `fail`: 1선 이상 합 ≠ 34. `failed_lines`에 선 이름·실제합·기대합 포함.
+- `incomplete`: 빈칸 때문에 일부 선 skip. `failed_lines`는 합 불일치 선만.
+- 구조 오류(크기·중복·빈칸 초과)는 `validate_lines` **입력 전** 별도 검증.
+
+## ECB 패턴
+
+| 계층 | 책임 | 산출물 |
+|------|------|--------|
+| **Event** | 격자 입력·`verify` 호출 | CLI / 테스트 픽스처 |
+| **Condition** | 10선 합 = 34?, 빈칸 skip? | `validate_lines` 판정 |
+| **Behavior** | OK / FAIL 목록 / incomplete | `{status, failed_lines}` 출력 |
+
+- Mom Test **S3** 회귀: 행·열 PASS + D1(또는 D2) FAIL → `status=fail`, `failed_lines`에 D1/D2 명시.
+
+## TDD (Test Loop)
+
+1. **RED** → **GREEN** → **REFACTOR** 순서 고정.
+2. RED 단계: **`tests/`만** 수정. `src/` 구현 금지.
+3. **금지**: `assert` 완화, `@pytest.mark.skip`, `xfail`, 테스트 삭제로 GREEN 만들기.
+4. RED: 실패 테스트 1개씩 추가. GREEN: 최소 구현. REFACTOR: 동작 유지하며 정리.
+5. 세션 3 Done: S1(10선 일괄)·S2(실패 선 명시)·S3(대각 FAIL) Test Loop 통과.
+
+## AI 작업 규칙
+
+- 응답·주석·커밋 메시지: **한국어**.
+- TDD 작업 시 응답 **첫 줄**에 Phase 선언: `Phase: RED` / `GREEN` / `REFACTOR`.
+- **git commit·push**는 사용자가 명시적으로 요청할 때만.
+- 범위 밖 기능 제안·구현 금지. Mom Test 진짜 문제(대각 늦은 검증)에 집중.
