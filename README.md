@@ -22,13 +22,142 @@
 
 ---
 
-## 성공 기준 (v0.1)
+## 성공 기준
 
 | ID | 기준 |
 |----|------|
 | **S1** | 행4 + 열4 + 대각2 = **10개 조건 일괄 점검** |
-| **S2** | 실패 시 `main_diagonal sum=32 expected=34`처럼 **조건명·실제합·기대합** 출력 |
+| **S2** | 실패 시 `main_diagonal sum=31 expected=34`처럼 **조건명·실제합·기대합** 출력 |
 | **S3** | **행·열 OK + 대각선 NG** → 즉시 FAIL (Mom Test 회귀 케이스) |
+
+---
+
+## 상태 (v0.2)
+
+| 트랙 | 구현 | S1 | S2 | S3 | 테스트 |
+|------|------|----|----|-----|--------|
+| **CLI** `magicxx verify` | ✅ | ✅ | ✅ | ✅ | `test_verify.py` 10/10 |
+| **Skill** `validate_lines` | 🔄 TDD RED | — | — | — | `test_validate_lines.py` 0/1 |
+
+- **지금 쓸 수 있는 것:** `python -m magicxx verify` — S1~S3 충족
+- **진행 중:** `src/validate_lines.py` — 세션 3 TDD 대상 (Canonical API)
+
+---
+
+## 빠른 시작
+
+### 설치
+
+```bash
+pip install -e ".[dev]"
+```
+
+- Python 3.10+
+- 런타임: stdlib만 / 개발: pytest
+
+### 사용 예 — S3 (행·열 OK, 대각선 NG)
+
+격자 파일 `grid.txt`:
+
+```text
+13  3  2 16
+ 8 10 11  5
+ 9  6  7 12
+ 4 15 14  1
+```
+
+```bash
+python -m magicxx verify grid.txt
+```
+
+**출력:**
+
+```text
+FAIL main_diagonal sum=31 expected=34
+FAIL anti_diagonal sum=37 expected=34
+```
+
+완성 마방진이면 `OK`, exit code `0`. 합 불일치는 `1`, 입력 오류는 `2`.
+
+stdin 입력 (bash):
+
+```bash
+python -m magicxx verify << 'EOF'
+16  3  2 13
+ 5 10 11  8
+ 9  6  7 12
+ 4 15 14  1
+EOF
+```
+
+### Python API
+
+```python
+from magicxx.verify import verify_grid, format_failures
+
+result = verify_grid([[16, 3, 2, 13], [5, 10, 11, 8], [9, 6, 7, 12], [4, 15, 14, 1]])
+print(result.ok)  # True
+```
+
+세션 3 Canonical API (TDD 진행 중):
+
+```python
+from src.validate_lines import validate_lines
+
+result = validate_lines(grid)  # {"status": "pass"|"fail"|"incomplete", "failed_lines": [...]}
+```
+
+---
+
+## 도메인 규칙
+
+| 규칙 | 값 |
+|------|-----|
+| 격자 | 4×4 고정 |
+| 마법상수 | 34 |
+| 숫자 | 1~16, 각 1회 |
+| 빈칸 | `0`, 최대 2개 |
+| 검증 대상 | 행 4 + 열 4 + 대각 2 = **10선** |
+| 빈칸 포함 선 | 합 검증 skip → `incomplete` |
+
+자동 풀이·Solver·힌트·n×n 일반화는 **Out of Scope**.
+
+---
+
+## 8계층 스코프 (세션 3)
+
+```
+Rule → Command → Skill → Test Loop
+```
+
+| 계층 | v0.2 | 산출물 |
+|------|------|--------|
+| Rule | ✅ | `magicxx/rules.py` |
+| Command | ✅ | `magicxx/cli.py` — `verify` |
+| Skill | 🔄 | `verify_grid` ✅ · `validate_lines` RED |
+| Test Loop | 🔄 | `test_verify` 10/10 · `test_validate_lines` 0/1 |
+| UI / Workflow / Agent / Product | — | 이후 세션 |
+
+---
+
+## 프로젝트 구조
+
+```text
+magicxx/          # CLI + verify_grid (사용 가능)
+src/              # validate_lines (TDD 대상)
+tests/            # pytest
+docs/PRD.md       # 제품 요구사항 (SSOT)
+Report/           # 세션 보고서
+Prompting/        # 세션 Transcript
+```
+
+---
+
+## 테스트
+
+```bash
+python -m pytest tests/ -v
+```
 
 ---
 
@@ -36,72 +165,9 @@
 
 | 문서 | 설명 |
 |------|------|
-| [`docs/PRD.md`](docs/PRD.md) | 제품 요구사항 (v0.1) |
+| [`docs/PRD.md`](docs/PRD.md) | 제품 요구사항 (v0.2, SSOT) |
 | [`Report/01.MagicSquare_ProblemDefinition_Report.md`](Report/01.MagicSquare_ProblemDefinition_Report.md) | 문제 정의·R-G-I-O·성공 기준 |
 | [`Report/01.Mom-Test-STEP1-Report.md`](Report/01.Mom-Test-STEP1-Report.md) | Mom Test STEP 1 인터뷰 보고서 |
-| [`Prompting/01.Mom-Test-STEP1-Transcript.md`](Prompting/01.Mom-Test-STEP1-Transcript.md) | 인터뷰 Transcript |
-
----
-
-## 8계층 스코프 (세션 3)
-
-```
-Rule → Command → (Skill) → Test Loop
-```
-
-| 계층 | v0.1 | 내용 |
-|------|------|------|
-| Rule | ✅ | 4×4, 합 34, 1~16 각 1회, 빈칸 `0` 최대 2 |
-| Command | ✅ | `verify` — 격자 입력 → 10개 조건 pass/fail |
-| Skill | ✅ | `verify_grid(...)` 재사용 API |
-| Test Loop | ✅ | pytest, S3 회귀 우선 |
-| UI / Workflow / Agent / Product | — | 이후 세션 |
-
----
-
-## 사용 예 (계획)
-
-구현 전 예상 인터페이스. Mom Test **S3** 시나리오: 행·열은 34인데 주대각선만 틀린 격자.
-
-```bash
-# stdin으로 4×4 격자 입력 (S3 — 행·열 OK, 주대각선 NG)
-python -m magicxx verify << 'EOF'
-13  3  2 16
- 8 10 11  5
- 9  6  7 12
- 4 15 14  1
-EOF
-```
-
-**기대 출력 (S2·S3):**
-
-```
-FAIL main_diagonal sum=31 expected=34
-FAIL anti_diagonal sum=37 expected=34
-```
-
-완성 마방진이면:
-
-```
-OK
-```
-
----
-
-## 요구 사항
-
-- Python 3.10+
-- 외부 의존성 최소 (stdlib 우선)
-
----
-
-## 설치·테스트
-
-```bash
-pip install -e ".[dev]"   # 또는: pip install pytest && pip install -e .
-pytest
-```
-
-## 상태
-
-**v0.1** — Rule + Command + Skill + Test Loop (S1·S2·S3) 구현 완료.
+| [`Report/02.Session3-TDD-RED-Report.md`](Report/02.Session3-TDD-RED-Report.md) | `validate_lines` TDD RED 세션 |
+| [`Prompting/01.Mom-Test-STEP1-Transcript.md`](Prompting/01.Mom-Test-STEP1-Transcript.md) | Mom Test Transcript |
+| [`Prompting/02.Session3-TDD-RED-Transcript.md`](Prompting/02.Session3-TDD-RED-Transcript.md) | 세션 3 TDD Transcript |
